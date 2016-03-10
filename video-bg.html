@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Video Background</title>
+	<link rel="stylesheet" type="text/css" href="https://necolas.github.io/normalize.css/3.0.3/normalize.css">
+	<script type="text/javascript" src="https://code.jquery.com/jquery-1.12.1.min.js"></script>
+	<style type="text/css">
+		body {
+			width: 100vw;
+			height: 100vh;
+		}
+		#YTplayer {
+			width: 100%;
+			height: 100%;
+			vertical-align: top;
+		 }
+	</style>
+</head>
+<body>
+	<div id="YTplayer"></div>
+</body>
+<script type="text/javascript">
+var tag = document.createElement('script');
+tag.src = "https://www.youtube.com/iframe_api";
+var firstScriptTag = document.getElementsByTagName('script')[0];
+firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+
+var player;
+
+function onPlayerReady(event) {
+	event.target.playVideo();
+}
+function onPlayerStateChange(state) {
+	var loaded = player.getVideoLoadedFraction();
+    if(loaded > 0) {
+        var levels = player.getAvailableQualityLevels();
+        var current = player.getPlaybackQuality();
+        if(current !== levels[0]) {
+        	player.setPlaybackQuality(levels[0]);
+        }
+    }
+
+	if (state.data === 0) {
+		//ended
+		player.seekTo(0);
+	}
+	// if (state.data === 1) {
+	//     //playing
+	// }
+	// if (state.data === 2) {
+	//     //paused
+	// }
+}
+function onYouTubeIframeAPIReady() {
+	var vid = '42Gtm4-Ax2U';
+	var search = window.location.search.substring(1);
+	if( search !== '') {
+		var query = search ? JSON.parse('{"' + window.location.search.substring(1).replace(/&/g, '","').replace(/=/g,'":"') + '"}',
+            function(key, value) {
+                return key === "" ? value : decodeURIComponent(value)
+            }
+        ) : {};
+        if (query.hasOwnProperty('v') && query.v.length !== 0) {
+        	vid = query.v;
+        }
+	}
+
+	player = new YT.Player('YTplayer', {
+		ratio: 16/9,
+		videoId: vid,
+		playerVars: {
+			autoplay: 1,
+			// controls: 0,
+			showinfo: 0,
+			modestbranding: 1,
+			wmode: 'transparent',
+			disablekb: 1,
+			iv_load_policy: 3,
+		},
+		events: {
+			'onReady': onPlayerReady,
+			'onStateChange': onPlayerStateChange
+		}
+	});
+	$(window).resize(function() {
+		$('#YTplayer').width($('body').width()).height($('body').height());
+	});
+}
+</script>
+</html>
