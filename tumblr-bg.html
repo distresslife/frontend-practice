@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Tumblr Background</title>
+	<link rel="stylesheet" type="text/css" href="https://necolas.github.io/normalize.css/3.0.3/normalize.css">
+	<script type="text/javascript" src="https://code.jquery.com/jquery-1.12.1.min.js"></script>
+	<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mustache.js/2.2.1/mustache.min.js"></script>
+	<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.12.0/moment.min.js"></script>
+	<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery.lazyload/1.9.1/jquery.lazyload.min.js"></script>
+	<style type="text/css">
+		body {
+			width: 100vw;
+			::after {
+              content: '';
+              display: block;
+              clear: both;
+            }
+		}
+		img {
+			width: 100%;
+			height: auto;
+			margin-bottom: 5px;
+		}
+		.loading {
+			display: none;
+			width: 100%;
+			height: 48px;
+			padding: 20px 0;
+			background: transparent url(/img/loading.gif) scroll no-repeat 50% 50%
+		}
+		span {
+			display: block;
+			line-height: 30px;
+			padding-left: 20px;
+			font-size: 14px;
+			color: #CCC;
+		}
+	</style>
+</head>
+<body>
+<script id="template-image-list" type="x-tmpl-mustache">
+{{#media}}
+	<div class="pic">
+		<img class="lazy" data-original="{{&url}}">
+		<span>{{created}}</span>
+	</div>
+{{/media}}
+</script>
+</body>
+<script type="text/javascript">
+var MustacheTemplate = (function(){
+    return function (id, data, partial) {
+        var static_template = $(id).html();
+        if(typeof(data) === "undefined"){
+            return Mustache.render(static_template);
+        }else{
+            if(typeof(partial) === "undefined"){
+                return Mustache.render(static_template, data);
+            }else{
+                return Mustache.render(static_template, data, partial);
+            }
+        }
+    };
+})();
+var getData = function(url, type, data, callback) {
+	$.ajax({
+        type: type,
+        url: url,
+        data : data,
+        dataType: 'jsonp',
+        beforeSend : function() {
+            $('body').append('<div class="loading"></div>');
+            $('body .loading').css('display','block');
+        },
+    }).done(function (output) {
+    	$('body .loading').remove();
+        callback(output);
+    }).fail(function (jqXHR, textStatus) {
+        callback(null);
+    });
+};
+
+var key = 'qMKlb7FhuLXIhBwz0Z6aevxjqwyFyGtKMHoFCqinLeTnhPrCjX';
+var hostname = 'foo-chan.tumblr.com';
+var offset = 0;
+var isEnd = false;
+var loadStatus = false;
+var getMediaList = function(){
+	loadStatus = true;
+	getData("http://api.tumblr.com/v2/blog/"+hostname+"/posts/photo", "GET", {offset:offset, api_key:key},function(output){
+		if (output.response.posts === 0) {
+			isEnd = true;
+			return ;
+		}
+
+		var list = [];
+		offset += output.response.posts.length;
+		
+		$.each(output.response.posts, function(k,v){
+			if (v.type === "photo") {
+				$.each(v.photos, function(k,p){
+					var media = {
+						"created" : v.date,
+						"url" : p.original_size.url
+					}
+					list.push(media);
+				});
+			}
+		});
+		
+		var html = MustacheTemplate('#template-image-list', {media:list});
+		$('body').append(html).trigger('imageLazyload');
+		loadStatus = false;
+	});
+}
+
+var search = window.location.search.substring(1);
+if (search !== '') {
+	var query = search ? JSON.parse('{"' + window.location.search.substring(1).replace(/&/g, '","').replace(/=/g,'":"') + '"}',
+        function(key, value) {
+            return key === "" ? value : decodeURIComponent(value)
+        }
+    ) : {};
+    if (query.hasOwnProperty('v') && query.v.length !== 0) {
+    	hostname = query.v;
+    }
+}
+
+$.ajax({
+    type: "GET",
+    url: "http://api.tumblr.com/v2/blog/"+hostname+"/info",
+    data : {  
+    	api_key: key 
+    },
+    dataType: 'jsonp'
+}).done(function (output) {
+	if (output.response.blog.posts !== 0) {
+		getMediaList();
+	}
+});
+
+$(window).scroll(function () {
+	if ($(window).scrollTop() + $(window).height() + 500 >= $(document).height()) {
+	    if(offset !== 0 && loadStatus == false && isEnd == false){
+	        getMediaList();
+	    }
+	}
+});
+$(window).on('imageLazyload', function(e){
+    $('body').find('img.lazy').lazyload({
+        skip_invisible : true,
+        effect : "fadeIn",
+        failure_limit : 10
+    }).removeClass('lazy');
+});
+</script>
+</html>
