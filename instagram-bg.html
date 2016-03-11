@@ -87,7 +87,7 @@ var getData = function(url, type, data, callback) {
 
 var token = '510573486.ab7d4b6.d8b155be5d1a47c78f72616b4d942e8d';
 var username = "the_kafka";
-var uid = "200637946";
+var uid = "";
 var max_id = "";
 var isEnd = false;
 var loadStatus = false;
@@ -116,7 +116,6 @@ var getMediaList = function(){
 					"url" : v.images.standard_resolution.url
 				}
 				list.push(media);
-				console.log(v);
 			});
 			
 			var html = MustacheTemplate('#template-image-list', {media:list});
@@ -125,9 +124,6 @@ var getMediaList = function(){
 		});
 	});
 }
-
-var username = "the_kafka";
-var uid = "";
 var search = window.location.search.substring(1);
 if (search !== '') {
 	var query = search ? JSON.parse('{"' + window.location.search.substring(1).replace(/&/g, '","').replace(/=/g,'":"') + '"}',
