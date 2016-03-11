@@ -10,6 +10,11 @@
 	<style type="text/css">
 		body {
 			width: 100vw;
+			::after {
+              content: '';
+              display: block;
+              clear: both;
+            }
 		}
 		img {
 			width: 100%;
@@ -22,6 +27,11 @@
 			height: 48px;
 			padding: 20px 0;
 			background: transparent url(/img/loading.gif) scroll no-repeat 50% 50%
+		}
+		.pic {
+			max-width: 640px;
+			display: inline-block;
+			float: left;
 		}
 		span {
 			display: block;
@@ -36,7 +46,7 @@
 <script id="template-image-list" type="x-tmpl-mustache">
 {{#media}}
 	<div class="pic">
-		<img class="lazy" data-original="{{&url}}">
+		<img class="lazy" data-original="{{&url}}" height="100%">
 		<span>{{created}}</span>
 	</div>
 {{/media}}
