@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Instagram Background</title>
+	<link rel="stylesheet" type="text/css" href="https://necolas.github.io/normalize.css/3.0.3/normalize.css">
+	<script type="text/javascript" src="https://code.jquery.com/jquery-1.12.1.min.js"></script>
+	<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mustache.js/2.2.1/mustache.min.js"></script>
+	<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.12.0/moment.min.js"></script>
+	<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery.lazyload/1.9.1/jquery.lazyload.min.js"></script>
+	<style type="text/css">
+		body {
+			width: 100vw;
+		}
+		img {
+			width: 100%;
+			height: auto;
+			margin-bottom: 5px;
+		}
+		.loading {
+			display: none;
+			width: 100%;
+			height: 48px;
+			padding: 20px 0;
+			background: transparent url(/img/loading.gif) scroll no-repeat 50% 50%
+		}
+		span {
+			display: block;
+			line-height: 30px;
+			padding-left: 20px;
+			font-size: 14px;
+			color: #CCC;
+		}
+	</style>
+</head>
+<body>
+<script id="template-image-list" type="x-tmpl-mustache">
+{{#media}}
+	<div class="pic">
+		<img class="lazy" data-original="{{&url}}">
+		<span>{{created}}</span>
+	</div>
+{{/media}}
+</script>
+</body>
+<script type="text/javascript">
+var MustacheTemplate = (function(){
+    return function (id, data, partial) {
+        var static_template = $(id).html();
+        if(typeof(data) === "undefined"){
+            return Mustache.render(static_template);
+        }else{
+            if(typeof(partial) === "undefined"){
+                return Mustache.render(static_template, data);
+            }else{
+                return Mustache.render(static_template, data, partial);
+            }
+        }
+    };
+})();
+var getData = function(url, type, data, callback) {
+	$.ajax({
+        type: type,
+        url: url,
+        data : data,
+        dataType: 'jsonp',
+        beforeSend : function() {
+            $('body').append('<div class="loading"></div>');
+            $('body .loading').css('display','block');
+        },
+    }).done(function (output) {
+    	$('body .loading').remove();
+        callback(output);
+    }).fail(function (jqXHR, textStatus) {
+        callback(null);
+    });
+};
+
+var token = '510573486.ab7d4b6.d8b155be5d1a47c78f72616b4d942e8d';
+var username = "the_kafka";
+var uid = "200637946";
+var max_id = "";
+var isEnd = false;
+var loadStatus = false;
+var getMediaList = function(){
+	loadStatus = true;
+	getData("https://api.instagram.com/v1/users/"+uid, "GET", {access_token:token},function(output){
+		var list = [];
+		var media_query = {
+			count: "30",
+			access_token: token
+		};
+		if (max_id !== "") {
+			media_query.max_id = max_id;
+		}
+
+		getData("https://api.instagram.com/v1/users/"+uid+"/media/recent/", "GET", media_query,function(media_output){
+			if (media_output.data.length === 0) {
+				isEnd = true;
+				return ;
+			}
+
+			max_id = media_output.pagination.next_max_id;
+			$.each(media_output.data, function(k,v){
+				var media = {
+					"created" : moment.unix(v.caption.created_time).format("YYYY-MM-DD hh:mm"),
+					"url" : v.images.standard_resolution.url
+				}
+				list.push(media);
+				console.log(v);
+			});
+			
+			var html = MustacheTemplate('#template-image-list', {media:list});
+			$('body').append(html).trigger('imageLazyload');
+			loadStatus = false;
+		});
+	});
+}
+
+var username = "the_kafka";
+var uid = "";
+var search = window.location.search.substring(1);
+if (search !== '') {
+	var query = search ? JSON.parse('{"' + window.location.search.substring(1).replace(/&/g, '","').replace(/=/g,'":"') + '"}',
+        function(key, value) {
+            return key === "" ? value : decodeURIComponent(value)
+        }
+    ) : {};
+    if (query.hasOwnProperty('v') && query.v.length !== 0) {
+    	username = query.v;
+    }
+}
+if (uid == "") {
+	$.ajax({
+        type: "GET",
+        url: "https://api.instagram.com/v1/users/search",
+        data : { 
+        	q: username, 
+        	access_token: token 
+        },
+        dataType: 'jsonp'
+    }).done(function (output) {
+    	$.each(output.data, function(k, v){
+			if(v.username == username) {
+				uid = v.id;
+				getMediaList();
+			}
+		});
+    });
+}
+$(window).scroll(function () {
+	if ($(window).scrollTop() + $(window).height() + 500 >= $(document).height()) {
+	    if(max_id !== "" && loadStatus == false && isEnd == false){
+	        getMediaList();
+	    }
+	}
+});
+$(window).on('imageLazyload', function(e){
+    $('body').find('img.lazy').lazyload({
+        skip_invisible : true,
+        effect : "fadeIn",
+        failure_limit : 10
+    }).removeClass('lazy');
+});
+</script>
+</html>
