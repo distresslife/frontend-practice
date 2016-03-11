@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-	<title>Instagram Background</title>
+	<title>Tumblr Background</title>
 	<link rel="stylesheet" type="text/css" href="https://necolas.github.io/normalize.css/3.0.3/normalize.css">
 	<script type="text/javascript" src="https://code.jquery.com/jquery-1.12.1.min.js"></script>
 	<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mustache.js/2.2.1/mustache.min.js"></script>
@@ -28,11 +28,6 @@
 			padding: 20px 0;
 			background: transparent url(/img/loading.gif) scroll no-repeat 50% 50%
 		}
-		.pic {
-			max-width: 640px;
-			display: inline-block;
-			float: left;
-		}
 		span {
 			display: block;
 			line-height: 30px;
@@ -46,7 +41,7 @@
 <script id="template-image-list" type="x-tmpl-mustache">
 {{#media}}
 	<div class="pic">
-		<img class="lazy" data-original="{{&url}}" height="100%">
+		<img class="lazy" data-original="{{&url}}">
 		<span>{{created}}</span>
 	</div>
 {{/media}}
@@ -85,45 +80,40 @@ var getData = function(url, type, data, callback) {
     });
 };
 
-var token = '510573486.ab7d4b6.d8b155be5d1a47c78f72616b4d942e8d';
-var username = "the_kafka";
-var uid = "";
-var max_id = "";
+var key = 'qMKlb7FhuLXIhBwz0Z6aevxjqwyFyGtKMHoFCqinLeTnhPrCjX';
+var hostname = 'foo-chan.tumblr.com';
+var offset = 0;
 var isEnd = false;
 var loadStatus = false;
 var getMediaList = function(){
 	loadStatus = true;
-	getData("https://api.instagram.com/v1/users/"+uid, "GET", {access_token:token},function(output){
-		var list = [];
-		var media_query = {
-			count: "30",
-			access_token: token
-		};
-		if (max_id !== "") {
-			media_query.max_id = max_id;
+	getData("http://api.tumblr.com/v2/blog/"+hostname+"/posts/photo", "GET", {offset:offset, api_key:key},function(output){
+		if (output.response.posts === 0) {
+			isEnd = true;
+			return ;
 		}
 
-		getData("https://api.instagram.com/v1/users/"+uid+"/media/recent/", "GET", media_query,function(media_output){
-			if (media_output.data.length === 0) {
-				isEnd = true;
-				return ;
+		var list = [];
+		offset += output.response.posts.length;
+		
+		$.each(output.response.posts, function(k,v){
+			if (v.type === "photo") {
+				$.each(v.photos, function(k,p){
+					var media = {
+						"created" : v.date,
+						"url" : p.original_size.url
+					}
+					list.push(media);
+				});
 			}
-
-			max_id = media_output.pagination.next_max_id;
-			$.each(media_output.data, function(k,v){
-				var media = {
-					"created" : moment.unix(v.caption.created_time).format("YYYY-MM-DD hh:mm"),
-					"url" : v.images.standard_resolution.url
-				}
-				list.push(media);
-			});
-			
-			var html = MustacheTemplate('#template-image-list', {media:list});
-			$('body').append(html).trigger('imageLazyload');
-			loadStatus = false;
 		});
+		
+		var html = MustacheTemplate('#template-image-list', {media:list});
+		$('body').append(html).trigger('imageLazyload');
+		loadStatus = false;
 	});
 }
+
 var search = window.location.search.substring(1);
 if (search !== '') {
 	var query = search ? JSON.parse('{"' + window.location.search.substring(1).replace(/&/g, '","').replace(/=/g,'":"') + '"}',
@@ -132,30 +122,26 @@ if (search !== '') {
         }
     ) : {};
     if (query.hasOwnProperty('v') && query.v.length !== 0) {
-    	username = query.v;
+    	hostname = query.v;
     }
 }
-if (uid == "") {
-	$.ajax({
-        type: "GET",
-        url: "https://api.instagram.com/v1/users/search",
-        data : { 
-        	q: username, 
-        	access_token: token 
-        },
-        dataType: 'jsonp'
-    }).done(function (output) {
-    	$.each(output.data, function(k, v){
-			if(v.username == username) {
-				uid = v.id;
-				getMediaList();
-			}
-		});
-    });
-}
+
+$.ajax({
+    type: "GET",
+    url: "http://api.tumblr.com/v2/blog/"+hostname+"/info",
+    data : {  
+    	api_key: key 
+    },
+    dataType: 'jsonp'
+}).done(function (output) {
+	if (output.response.blog.posts !== 0) {
+		getMediaList();
+	}
+});
+
 $(window).scroll(function () {
 	if ($(window).scrollTop() + $(window).height() + 500 >= $(document).height()) {
-	    if(max_id !== "" && loadStatus == false && isEnd == false){
+	    if(offset !== 0 && loadStatus == false && isEnd == false){
 	        getMediaList();
 	    }
 	}
