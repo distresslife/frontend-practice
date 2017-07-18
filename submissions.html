@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Submissions</title>
+	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+	<script type="text/javascript" src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+	<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.18.1/moment.min.js"></script>
+	<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/handlebars.js/4.0.10/handlebars.min.js"></script>
+	<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+</head>
+<style type="text/css">
+	.timeline {
+		height: 100px;
+		color: #FFF;
+		background: #337ab7;
+	}
+	.hour {
+		height: 100px;
+		width: 235px;
+		border-right: 5px solid #FFF;
+		display: inline-block;
+	}
+	.time {
+		line-height: 100px;
+    	padding: 0 10px;
+	}
+	.list {
+		position: relative;
+		background: #CCC;
+		margin-bottom: 20px;
+	}
+	.room {
+		display: inline-block;
+		width: 150px;
+		height: 150px;
+		padding: 20px 10px;
+	}
+	.agenda {
+		background: tomato;
+		color: #FFF;
+		height: 150px;
+	    padding: 0 10px;
+		position: absolute;
+	}
+	.EN {
+		color: #337ab7;
+	}
+	span {
+		display: block;
+	}
+</style>
+<body>
+	<!-- 1 min => 8px; -->
+</body>
+</html>
+<script type="text/javascript">
+var getTimeline = function(start, end) {
+	var html = "";
+	var diff = end.diff(start, "minutes");
+    var num = end.diff(start, "hours");
+   	html += '<div class="timeline" style="width:'+(diff*4)+'px;margin-left:150px;">';
+
+   	for(i = 1; i <= num; i++){
+   		html += '<div class="hour"><span class="time text-right">'+start.add("hour", 1).format("HH:mm")+'</span></div>';
+   	}
+    html += '</div>';
+    return html;
+}
+var getGrid = function(row) {
+	var width = row.mins*4;
+	var left = (row.diff*4)+150;
+	var style = 'left:'+left+'px;width:'+width+'px';
+	var grid = "";
+
+	grid += '<div class="'+row.lang+' pull-left agenda" style="'+style+'">';
+	grid += '<span class="community">['+row.community+']</span>';
+	grid += '<span class="title">'+row.subject+'</span>';
+	grid += '<span class="start">'+row.start_+'</span>';
+	grid += '<span class="end">'+row.end_+'</span>';
+	grid += '<span class="text-right mins">'+row.mins+'</span>';
+	grid += '</div>';
+
+	return grid;
+}
+
+var day1 = {};
+var day2 = {};
+$.ajax({
+    type: "GET",
+    url: "https://coscup.org/2017-assets/json/submissions.json",
+    dataType: 'json',
+}).done(function (output) {
+    //timeline
+    var day1_start = moment("2017-08-05 8:45");
+    var day1_end = moment("2017-08-05 16:55");
+    var day2_start = moment("2017-08-06 9:00");
+    var day2_end = moment("2017-08-06 17:00");
+
+    var html = "";
+    $.each(output, function(k, v){
+    	var start = moment(v.start).format("YYYY-MM-DD");
+    	if (start === "2017-08-05") {
+    		if (!day1.hasOwnProperty(v.room)) {
+	    		day1[v.room] = [];
+			}
+			day1[v.room].push(v);
+    	} else {
+    		if (!day2.hasOwnProperty(v.room)) {
+	    		day2[v.room] = [];
+			}
+			day2[v.room].push(v);
+    	}
+    });
+
+	html += "<h2 class='day1-title'>Day 1</h2>";
+	$.each(day1, function(index, list){
+		var diff = day1_end.diff(day1_start, "minutes");
+		html += '<div class="list day1-list clearfix" style="width:'+((diff*4)+150)+'px">';
+		html += '<div class="pull-left room">'+index+'</div>';
+
+		$.each(list, function(key, v){
+			var start = moment(v.start);
+			var end = moment(v.end);
+
+			v.mins = end.diff(start, "minutes");
+			v.diff = start.diff(day1_start, "minutes");
+			v.start_ = start.format("HH:mm");
+			v.end_ = end.format("HH:mm");
+
+			html += getGrid(v);
+		});
+		html += '</div>';
+	});
+
+	html += "<h2 class='day2-title'>Day 2</h2>";
+	$.each(day2, function(index, list){
+		var diff = day2_end.diff(day2_start, "minutes");
+		html += '<div class="list day2-list clearfix" style="width:'+((diff*4)+150)+'px">';
+		html += '<div class="pull-left room">'+index+'</div>';
+
+		$.each(list, function(key, v){
+			var start = moment(v.start);
+			var end = moment(v.end);
+
+			v.mins = end.diff(start, "minutes");
+			v.diff = start.diff(day2_start, "minutes");
+			v.start_ = start.format("HH:mm");
+			v.end_ = end.format("HH:mm");
+
+			html += getGrid(v);
+		});
+		html += '</div>';
+	});
+	$('body').append(html);
+
+	var day1_timeline = getTimeline(day1_start, day1_end);
+    $('.day1-title').after(day1_timeline);
+    var day2_timeline = getTimeline(day2_start, day2_end);
+    $('.day2-title').after(day2_timeline);
+
+}).fail(function (jqXHR, textStatus) {
+    callback(null);
+});
+</script>
